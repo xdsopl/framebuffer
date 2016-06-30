@@ -169,6 +169,7 @@ func main() {
 	//fmt.Println("Green.Offset =", varInfo.Green.Offset, "Green.Length =", varInfo.Green.Length, "Green.Msb_right =", varInfo.Green.Msb_right)
 	//fmt.Println("Blue.Offset =", varInfo.Blue.Offset, "Blue.Length =", varInfo.Blue.Length, "Blue.Msb_right =", varInfo.Blue.Msb_right)
 	//fmt.Println("Transp.Offset =", varInfo.Transp.Offset, "Transp.Length =", varInfo.Transp.Length, "Transp.Msb_right =", varInfo.Transp.Msb_right)
+	//fmt.Println("varInfo.Xres =", varInfo.Xres, "varInfo.Yres =", varInfo.Yres, "varInfo.Xoffset =", varInfo.Xoffset, "varInfo.Yoffset =", varInfo.Yoffset)
 	if varInfo.Blue.Length != 8 { die("varInfo.Blue.Length != 8") }
 	if varInfo.Blue.Offset != 0 { die("varInfo.Blue.Offset != 0") }
 	if varInfo.Green.Length != 8 { die("varInfo.Green.Length != 8") }
