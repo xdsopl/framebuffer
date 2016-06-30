@@ -83,6 +83,32 @@ func (p *NBGR32) At(x, y int) color.Color {
 	return color.NRGBA{p.Pix[i+2], p.Pix[i+1], p.Pix[i+0], 255}
 }
 
+type NBGRA struct {
+	Pix []uint8
+	Stride int
+	Rect image.Rectangle
+}
+
+func (p *NBGRA) Bounds() image.Rectangle { return p.Rect }
+func (p *NBGRA) ColorModel() color.Model { return color.NRGBAModel }
+func (p *NBGRA) PixOffset(x, y int) int { return y * p.Stride + x * 4 }
+
+func (p *NBGRA) Set(x, y int, c color.Color) {
+	if !(image.Point{x, y}.In(p.Rect)) { return }
+	i := p.PixOffset(x, y)
+	c1 := color.NRGBAModel.Convert(c).(color.NRGBA)
+	p.Pix[i+0] = c1.B
+	p.Pix[i+1] = c1.G
+	p.Pix[i+2] = c1.R
+	p.Pix[i+3] = c1.A
+}
+
+func (p *NBGRA) At(x, y int) color.Color {
+	if !(image.Point{x, y}.In(p.Rect)) { return color.NRGBA{} }
+	i := p.PixOffset(x, y)
+	return color.NRGBA{p.Pix[i+3], p.Pix[i+2], p.Pix[i+1], p.Pix[i+0]}
+}
+
 func die(err interface{}) {
 	fmt.Println(err)
 	os.Exit(1)
@@ -125,12 +151,16 @@ func main() {
 	if varInfo.Green.Offset != 8 { die("varInfo.Green.Offset != 8") }
 	if varInfo.Red.Length != 8 { die("varInfo.Red.Length != 8") }
 	if varInfo.Red.Offset != 16 { die("varInfo.Red.Offset != 16") }
-	if varInfo.Transp.Length != 0 { die("varInfo.Transp.Length != 0") }
-	if varInfo.Transp.Offset != 0 { die("varInfo.Transp.Offset != 0") }
 	fbMmap, err := syscall.Mmap(int(fbFile.Fd()), 0, int(fixInfo.Smem_len), syscall.PROT_READ | syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil { die(err) }
-	fbImg := &NBGR32{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
-
+	var fbImg draw.Image
+	if varInfo.Transp.Length == 0 && varInfo.Transp.Offset == 0 {
+		fbImg = &NBGR32{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
+	} else if varInfo.Transp.Length == 8 && varInfo.Transp.Offset == 24 {
+		fbImg = &NBGRA{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
+	} else {
+		die("unsupported pixel format")
+	}
 	draw.Draw(fbImg, img.Bounds().Sub(img.Bounds().Min).Add(fbImg.Bounds().Min), img, img.Bounds().Min, draw.Src)
 }
 
