@@ -58,6 +58,31 @@ type VarScreenInfo struct {
 	Reserved [4]uint32
 }
 
+type NBGR struct {
+	Pix []uint8
+	Stride int
+	Rect image.Rectangle
+}
+
+func (p *NBGR) Bounds() image.Rectangle { return p.Rect }
+func (p *NBGR) ColorModel() color.Model { return color.NRGBAModel }
+func (p *NBGR) PixOffset(x, y int) int { return y * p.Stride + x * 3 }
+
+func (p *NBGR) Set(x, y int, c color.Color) {
+	if !(image.Point{x, y}.In(p.Rect)) { return }
+	i := p.PixOffset(x, y)
+	c1 := color.NRGBAModel.Convert(c).(color.NRGBA)
+	p.Pix[i+0] = c1.B
+	p.Pix[i+1] = c1.G
+	p.Pix[i+2] = c1.R
+}
+
+func (p *NBGR) At(x, y int) color.Color {
+	if !(image.Point{x, y}.In(p.Rect)) { return color.NRGBA{} }
+	i := p.PixOffset(x, y)
+	return color.NRGBA{p.Pix[i+2], p.Pix[i+1], p.Pix[i+0], 255}
+}
+
 type NBGR32 struct {
 	Pix []uint8
 	Stride int
@@ -144,7 +169,6 @@ func main() {
 	//fmt.Println("Green.Offset =", varInfo.Green.Offset, "Green.Length =", varInfo.Green.Length, "Green.Msb_right =", varInfo.Green.Msb_right)
 	//fmt.Println("Blue.Offset =", varInfo.Blue.Offset, "Blue.Length =", varInfo.Blue.Length, "Blue.Msb_right =", varInfo.Blue.Msb_right)
 	//fmt.Println("Transp.Offset =", varInfo.Transp.Offset, "Transp.Length =", varInfo.Transp.Length, "Transp.Msb_right =", varInfo.Transp.Msb_right)
-	if varInfo.Bits_per_pixel != 32 { die("varInfo.Bits_per_pixel != 32") }
 	if varInfo.Blue.Length != 8 { die("varInfo.Blue.Length != 8") }
 	if varInfo.Blue.Offset != 0 { die("varInfo.Blue.Offset != 0") }
 	if varInfo.Green.Length != 8 { die("varInfo.Green.Length != 8") }
@@ -154,10 +178,12 @@ func main() {
 	fbMmap, err := syscall.Mmap(int(fbFile.Fd()), 0, int(fixInfo.Smem_len), syscall.PROT_READ | syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil { die(err) }
 	var fbImg draw.Image
-	if varInfo.Transp.Length == 0 && varInfo.Transp.Offset == 0 {
+	if varInfo.Bits_per_pixel == 32 && varInfo.Transp.Length == 0 && varInfo.Transp.Offset == 0 {
 		fbImg = &NBGR32{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
-	} else if varInfo.Transp.Length == 8 && varInfo.Transp.Offset == 24 {
+	} else if varInfo.Bits_per_pixel == 32 && varInfo.Transp.Length == 8 && varInfo.Transp.Offset == 24 {
 		fbImg = &NBGRA{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
+	} else if varInfo.Bits_per_pixel == 24 && varInfo.Transp.Length == 0 && varInfo.Transp.Offset == 0 {
+		fbImg = &NBGR{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
 	} else {
 		die("unsupported pixel format")
 	}
