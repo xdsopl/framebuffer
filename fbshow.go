@@ -178,11 +178,11 @@ func main() {
 	fbMmap, err := syscall.Mmap(int(fbFile.Fd()), 0, int(fixInfo.Smem_len), syscall.PROT_READ | syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil { die(err) }
 	var fbImg draw.Image
-	if varInfo.Bits_per_pixel == 32 && varInfo.Transp.Length == 0 && varInfo.Transp.Offset == 0 {
+	if varInfo.Bits_per_pixel == 32 && varInfo.Transp.Length == 0 {
 		fbImg = &NBGR32{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
 	} else if varInfo.Bits_per_pixel == 32 && varInfo.Transp.Length == 8 && varInfo.Transp.Offset == 24 {
 		fbImg = &NBGRA{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
-	} else if varInfo.Bits_per_pixel == 24 && varInfo.Transp.Length == 0 && varInfo.Transp.Offset == 0 {
+	} else if varInfo.Bits_per_pixel == 24 && varInfo.Transp.Length == 0 {
 		fbImg = &NBGR{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
 	} else {
 		die("unsupported pixel format")
