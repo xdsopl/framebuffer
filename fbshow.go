@@ -14,6 +14,7 @@ import (
 	"unsafe"
 	"syscall"
 	"image"
+	"image/draw"
 	"image/color"
 	_ "image/jpeg"
 	_ "image/png"
@@ -57,6 +58,31 @@ type VarScreenInfo struct {
 	Reserved [4]uint32
 }
 
+type NBGR32 struct {
+	Pix []uint8
+	Stride int
+	Rect image.Rectangle
+}
+
+func (p *NBGR32) Bounds() image.Rectangle { return p.Rect }
+func (p *NBGR32) ColorModel() color.Model { return color.NRGBAModel }
+func (p *NBGR32) PixOffset(x, y int) int { return y * p.Stride + x * 4 }
+
+func (p *NBGR32) Set(x, y int, c color.Color) {
+	if !(image.Point{x, y}.In(p.Rect)) { return }
+	i := p.PixOffset(x, y)
+	c1 := color.NRGBAModel.Convert(c).(color.NRGBA)
+	p.Pix[i+0] = c1.B
+	p.Pix[i+1] = c1.G
+	p.Pix[i+2] = c1.R
+}
+
+func (p *NBGR32) At(x, y int) color.Color {
+	if !(image.Point{x, y}.In(p.Rect)) { return color.NRGBA{} }
+	i := p.PixOffset(x, y)
+	return color.NRGBA{p.Pix[i+2], p.Pix[i+1], p.Pix[i+0], 255}
+}
+
 func die(err interface{}) {
 	fmt.Println(err)
 	os.Exit(1)
@@ -66,6 +92,11 @@ func main() {
 	flag.Parse()
 	if len(flag.Args()) != 1 { die("usage: fbshow file") }
 	imgName := flag.Args()[0]
+	imgFile, err := os.Open(imgName)
+	if err != nil { die(err) }
+	img, _, err := image.Decode(imgFile)
+	if err != nil { die(err) }
+
 	fbName := "/dev/fb0"
 	fbFile, err := os.OpenFile(fbName, os.O_RDWR, os.ModeDevice)
 	if err != nil { die(err) }
@@ -79,46 +110,27 @@ func main() {
 	if fixInfo.Visual != FB_VISUAL_TRUECOLOR {
 		die("fixInfo.Visual != FB_VISUAL_TRUECOLOR")
 	}
-	fbSize := int(fixInfo.Smem_len)
-	stride := int(fixInfo.Line_length)
 	var varInfo VarScreenInfo
 	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fbFile.Fd(), FBIOGET_VSCREENINFO, uintptr(unsafe.Pointer(&varInfo))); errno != 0 {
 		die(os.SyscallError{"SYS_IOCTL", errno})
 	}
-	width := int(varInfo.Xres)
-	height := int(varInfo.Yres)
-	xOffset := int(varInfo.Xoffset)
-	yOffset := int(varInfo.Yoffset)
-	bitsPerPixel := int(varInfo.Bits_per_pixel)
-	bytesPerPixel := bitsPerPixel / 8
-	rOffset := int(varInfo.Red.Offset) / 8
-	gOffset := int(varInfo.Green.Offset) / 8
-	bOffset := int(varInfo.Blue.Offset) / 8
 	//fmt.Println("Red.Offset =", varInfo.Red.Offset, "Red.Length =", varInfo.Red.Length, "Red.Msb_right =", varInfo.Red.Msb_right)
 	//fmt.Println("Green.Offset =", varInfo.Green.Offset, "Green.Length =", varInfo.Green.Length, "Green.Msb_right =", varInfo.Green.Msb_right)
 	//fmt.Println("Blue.Offset =", varInfo.Blue.Offset, "Blue.Length =", varInfo.Blue.Length, "Blue.Msb_right =", varInfo.Blue.Msb_right)
 	//fmt.Println("Transp.Offset =", varInfo.Transp.Offset, "Transp.Length =", varInfo.Transp.Length, "Transp.Msb_right =", varInfo.Transp.Msb_right)
-	if bitsPerPixel != 32 { die("bitsPerPixel != 32") }
-	fbMmap, err := syscall.Mmap(int(fbFile.Fd()), 0, fbSize, syscall.PROT_READ | syscall.PROT_WRITE, syscall.MAP_SHARED)
+	if varInfo.Bits_per_pixel != 32 { die("varInfo.Bits_per_pixel != 32") }
+	if varInfo.Blue.Length != 8 { die("varInfo.Blue.Length != 8") }
+	if varInfo.Blue.Offset != 0 { die("varInfo.Blue.Offset != 0") }
+	if varInfo.Green.Length != 8 { die("varInfo.Green.Length != 8") }
+	if varInfo.Green.Offset != 8 { die("varInfo.Green.Offset != 8") }
+	if varInfo.Red.Length != 8 { die("varInfo.Red.Length != 8") }
+	if varInfo.Red.Offset != 16 { die("varInfo.Red.Offset != 16") }
+	if varInfo.Transp.Length != 0 { die("varInfo.Transp.Length != 0") }
+	if varInfo.Transp.Offset != 0 { die("varInfo.Transp.Offset != 0") }
+	fbMmap, err := syscall.Mmap(int(fbFile.Fd()), 0, int(fixInfo.Smem_len), syscall.PROT_READ | syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil { die(err) }
-	imgFile, err := os.Open(imgName)
-	if err != nil { die(err) }
-	img, _, err := image.Decode(imgFile)
-	if err != nil { die(err) }
-	for j := 0; j < height; j++ {
-		begin := stride * (j + yOffset)
-		end := begin + stride
-		fbLine := fbMmap[begin:end]
-		for i := 0; i < width; i++ {
-			if !(image.Point{i, j}.In(img.Bounds())) { continue }
-			begin := bytesPerPixel * (i + xOffset)
-			end := begin + bytesPerPixel
-			fbPixel := fbLine[begin:end]
-			c := color.NRGBAModel.Convert(img.At(i, j)).(color.NRGBA)
-			fbPixel[rOffset] = c.R
-			fbPixel[gOffset] = c.G
-			fbPixel[bOffset] = c.B
-		}
-	}
+	fbImg := &NBGR32{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
+
+	draw.Draw(fbImg, img.Bounds().Sub(img.Bounds().Min).Add(fbImg.Bounds().Min), img, img.Bounds().Min, draw.Src)
 }
 
