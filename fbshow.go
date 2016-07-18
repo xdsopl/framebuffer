@@ -58,17 +58,17 @@ type VarScreenInfo struct {
 	Reserved [4]uint32
 }
 
-type NBGR565 struct {
+type BGR565 struct {
 	Pix []uint8
 	Stride int
 	Rect image.Rectangle
 }
 
-func (p *NBGR565) Bounds() image.Rectangle { return p.Rect }
-func (p *NBGR565) ColorModel() color.Model { return color.NRGBAModel }
-func (p *NBGR565) PixOffset(x, y int) int { return y * p.Stride + x * 2 }
+func (p *BGR565) Bounds() image.Rectangle { return p.Rect }
+func (p *BGR565) ColorModel() color.Model { return color.NRGBAModel }
+func (p *BGR565) PixOffset(x, y int) int { return y * p.Stride + x * 2 }
 
-func (p *NBGR565) Set(x, y int, c color.Color) {
+func (p *BGR565) Set(x, y int, c color.Color) {
 	if !(image.Point{x, y}.In(p.Rect)) { return }
 	i := p.PixOffset(x, y)
 	c1 := color.NRGBAModel.Convert(c).(color.NRGBA)
@@ -76,23 +76,23 @@ func (p *NBGR565) Set(x, y int, c color.Color) {
 	p.Pix[i+1] = (c1.G >> 5) | ((c1.R >> 3) << 3)
 }
 
-func (p *NBGR565) At(x, y int) color.Color {
+func (p *BGR565) At(x, y int) color.Color {
 	if !(image.Point{x, y}.In(p.Rect)) { return color.NRGBA{} }
 	i := p.PixOffset(x, y)
 	return color.NRGBA{(p.Pix[i+1] >> 3) << 3, (p.Pix[i+1] << 5) | ((p.Pix[i+0] >> 5) << 2), p.Pix[i+0] << 3, 255}
 }
 
-type NBGR struct {
+type BGR struct {
 	Pix []uint8
 	Stride int
 	Rect image.Rectangle
 }
 
-func (p *NBGR) Bounds() image.Rectangle { return p.Rect }
-func (p *NBGR) ColorModel() color.Model { return color.NRGBAModel }
-func (p *NBGR) PixOffset(x, y int) int { return y * p.Stride + x * 3 }
+func (p *BGR) Bounds() image.Rectangle { return p.Rect }
+func (p *BGR) ColorModel() color.Model { return color.NRGBAModel }
+func (p *BGR) PixOffset(x, y int) int { return y * p.Stride + x * 3 }
 
-func (p *NBGR) Set(x, y int, c color.Color) {
+func (p *BGR) Set(x, y int, c color.Color) {
 	if !(image.Point{x, y}.In(p.Rect)) { return }
 	i := p.PixOffset(x, y)
 	c1 := color.NRGBAModel.Convert(c).(color.NRGBA)
@@ -101,23 +101,23 @@ func (p *NBGR) Set(x, y int, c color.Color) {
 	p.Pix[i+2] = c1.R
 }
 
-func (p *NBGR) At(x, y int) color.Color {
+func (p *BGR) At(x, y int) color.Color {
 	if !(image.Point{x, y}.In(p.Rect)) { return color.NRGBA{} }
 	i := p.PixOffset(x, y)
 	return color.NRGBA{p.Pix[i+2], p.Pix[i+1], p.Pix[i+0], 255}
 }
 
-type NBGR32 struct {
+type BGR32 struct {
 	Pix []uint8
 	Stride int
 	Rect image.Rectangle
 }
 
-func (p *NBGR32) Bounds() image.Rectangle { return p.Rect }
-func (p *NBGR32) ColorModel() color.Model { return color.NRGBAModel }
-func (p *NBGR32) PixOffset(x, y int) int { return y * p.Stride + x * 4 }
+func (p *BGR32) Bounds() image.Rectangle { return p.Rect }
+func (p *BGR32) ColorModel() color.Model { return color.NRGBAModel }
+func (p *BGR32) PixOffset(x, y int) int { return y * p.Stride + x * 4 }
 
-func (p *NBGR32) Set(x, y int, c color.Color) {
+func (p *BGR32) Set(x, y int, c color.Color) {
 	if !(image.Point{x, y}.In(p.Rect)) { return }
 	i := p.PixOffset(x, y)
 	c1 := color.NRGBAModel.Convert(c).(color.NRGBA)
@@ -126,7 +126,7 @@ func (p *NBGR32) Set(x, y int, c color.Color) {
 	p.Pix[i+2] = c1.R
 }
 
-func (p *NBGR32) At(x, y int) color.Color {
+func (p *BGR32) At(x, y int) color.Color {
 	if !(image.Point{x, y}.In(p.Rect)) { return color.NRGBA{} }
 	i := p.PixOffset(x, y)
 	return color.NRGBA{p.Pix[i+2], p.Pix[i+1], p.Pix[i+0], 255}
@@ -206,7 +206,7 @@ func main() {
 			if varInfo.Red.Length != 8 { die("varInfo.Red.Length != 8") }
 			if varInfo.Red.Offset != 16 { die("varInfo.Red.Offset != 16") }
 			if varInfo.Transp.Length == 0 {
-				fbImg = &NBGR32{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
+				fbImg = &BGR32{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
 			} else if varInfo.Transp.Length == 8 && varInfo.Transp.Offset == 24 {
 				fbImg = &NBGRA{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
 			} else {
@@ -220,7 +220,7 @@ func main() {
 			if varInfo.Red.Length != 8 { die("varInfo.Red.Length != 8") }
 			if varInfo.Red.Offset != 16 { die("varInfo.Red.Offset != 16") }
 			if varInfo.Transp.Length != 0 { die("varInfo.Transp.Length != 0") }
-			fbImg = &NBGR{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
+			fbImg = &BGR{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
 		case 16:
 			if varInfo.Blue.Length != 5 { die("varInfo.Blue.Length != 5") }
 			if varInfo.Blue.Offset != 0 { die("varInfo.Blue.Offset != 0") }
@@ -229,7 +229,7 @@ func main() {
 			if varInfo.Red.Length != 5 { die("varInfo.Red.Length != 5") }
 			if varInfo.Red.Offset != 11 { die("varInfo.Red.Offset != 11") }
 			if varInfo.Transp.Length != 0 { die("varInfo.Transp.Length != 0") }
-			fbImg = &NBGR565{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
+			fbImg = &BGR565{fbMmap, int(fixInfo.Line_length), image.Rect(0, 0, int(varInfo.Xres), int(varInfo.Yres)).Add(image.Point{int(varInfo.Xoffset), int(varInfo.Yoffset)})}
 		default:
 			die("unsupported pixel format")
 	}
