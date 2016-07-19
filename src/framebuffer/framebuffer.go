@@ -152,7 +152,7 @@ func (p *NBGRA) Set(x, y int, c color.Color) {
 func (p *NBGRA) At(x, y int) color.Color {
 	if !(image.Point{x, y}.In(p.Rect)) { return color.NRGBA{} }
 	i := p.PixOffset(x, y)
-	return color.NRGBA{p.Pix[i+3], p.Pix[i+2], p.Pix[i+1], p.Pix[i+0]}
+	return color.NRGBA{p.Pix[i+2], p.Pix[i+1], p.Pix[i+0], p.Pix[i+3]}
 }
 
 type UnsupportedError string
