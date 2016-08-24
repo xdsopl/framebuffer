@@ -40,12 +40,13 @@ func main() {
 	if str == "gif" {
 		all, err := gif.DecodeAll(file)
 		if err != nil { die(err) }
-		img := all.Image[0]
-		dst := img.Bounds().Sub(img.Bounds().Min).Add(fb.Bounds().Min).Add(fb.Bounds().Size().Sub(img.Bounds().Size()).Div(2))
-		src := img.Bounds().Min
+		acc := image.NewRGBA(all.Image[0].Bounds())
+		dst := acc.Bounds().Sub(acc.Bounds().Min).Add(fb.Bounds().Min).Add(fb.Bounds().Size().Sub(acc.Bounds().Size()).Div(2))
+		src := acc.Bounds().Min
 		for {
 			for idx, img := range all.Image {
-				draw.Draw(fb, dst, img, src, draw.Src)
+				draw.Draw(acc, acc.Bounds(), img, src, draw.Over)
+				draw.Draw(fb, dst, acc, src, draw.Src)
 				time.Sleep(time.Duration(all.Delay[idx]) * 10 * time.Millisecond)
 			}
 		}
