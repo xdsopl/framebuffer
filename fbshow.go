@@ -33,6 +33,6 @@ func main() {
 	if err != nil { die(err) }
 	fb, err := framebuffer.Open("/dev/fb0")
 	if err != nil { die(err) }
-	draw.Draw(fb, img.Bounds().Sub(img.Bounds().Min).Add(fb.Bounds().Min), img, img.Bounds().Min, draw.Src)
+	draw.Draw(fb, img.Bounds().Sub(img.Bounds().Min).Add(fb.Bounds().Min).Add(fb.Bounds().Size().Sub(img.Bounds().Size()).Div(2)), img, img.Bounds().Min, draw.Src)
 }
 
