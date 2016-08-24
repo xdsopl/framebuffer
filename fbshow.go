@@ -11,10 +11,12 @@ import (
 	"os"
 	"fmt"
 	"flag"
+	"time"
 	"image"
 	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
+	"image/gif"
 	"framebuffer"
 )
 
@@ -29,10 +31,30 @@ func main() {
 	name := flag.Args()[0]
 	file, err := os.Open(name)
 	if err != nil { die(err) }
-	img, _, err := image.Decode(file)
+	_, str, err := image.DecodeConfig(file)
+	if err != nil { die(err) }
+	_, err = file.Seek(0, 0)
 	if err != nil { die(err) }
 	fb, err := framebuffer.Open("/dev/fb0")
 	if err != nil { die(err) }
-	draw.Draw(fb, img.Bounds().Sub(img.Bounds().Min).Add(fb.Bounds().Min).Add(fb.Bounds().Size().Sub(img.Bounds().Size()).Div(2)), img, img.Bounds().Min, draw.Src)
+	if str == "gif" {
+		all, err := gif.DecodeAll(file)
+		if err != nil { die(err) }
+		img := all.Image[0]
+		dst := img.Bounds().Sub(img.Bounds().Min).Add(fb.Bounds().Min).Add(fb.Bounds().Size().Sub(img.Bounds().Size()).Div(2))
+		src := img.Bounds().Min
+		for {
+			for idx, img := range all.Image {
+				draw.Draw(fb, dst, img, src, draw.Src)
+				time.Sleep(time.Duration(all.Delay[idx]) * 10 * time.Millisecond)
+			}
+		}
+		return
+	}
+	img, _, err := image.Decode(file)
+	if err != nil { die(err) }
+	dst := img.Bounds().Sub(img.Bounds().Min).Add(fb.Bounds().Min).Add(fb.Bounds().Size().Sub(img.Bounds().Size()).Div(2))
+	src := img.Bounds().Min
+	draw.Draw(fb, dst, img, src, draw.Src)
 }
 
