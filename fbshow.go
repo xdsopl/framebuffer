@@ -45,9 +45,10 @@ func main() {
 		src := acc.Bounds().Min
 		for {
 			for idx, img := range all.Image {
+				begin := time.Now()
 				draw.Draw(acc, acc.Bounds(), img, src, draw.Over)
 				draw.Draw(fb, dst, acc, src, draw.Src)
-				time.Sleep(time.Duration(all.Delay[idx]) * 10 * time.Millisecond)
+				time.Sleep(time.Duration(all.Delay[idx]) * 10 * time.Millisecond - time.Since(begin))
 			}
 		}
 		return
