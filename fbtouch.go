@@ -37,17 +37,20 @@ const EventTypeAbs = 0x03
 const EventCodeAbsX = 0x00
 const EventCodeAbsY = 0x01
 
-func square(fb draw.Image, x, y int) {
+type Position struct {
+	X, Y int
+}
+
+func square(fb draw.Image, pos Position) {
 	for j := 0; j < 10; j++ {
 		for i := 0; i < 10; i++ {
-			fb.Set(x+i, y+j, color.White)
+			fb.Set(pos.X+i, pos.Y+j, color.White)
 		}
 	}
 }
 
 func painter(fb draw.Image, ev *os.File) {
-	x := -1
-	y := -1
+	pos := Position{-1, -1}
 	const ieMax = 64
 	const ieSize = int(unsafe.Sizeof(InputEvent{}))
 	buf := make([]byte, ieMax * ieSize)
@@ -63,13 +66,13 @@ func painter(fb draw.Image, ev *os.File) {
 		for _, ie := range iev {
 			switch ie.Type {
 				case EventTypeSyn:
-					square(fb, x, y)
+					square(fb, pos)
 				case EventTypeAbs:
 					switch ie.Code {
 						case EventCodeAbsX:
-							x = int(ie.Value)
+							pos.X = int(ie.Value)
 						case EventCodeAbsY:
-							y = int(ie.Value)
+							pos.Y = int(ie.Value)
 					}
 			}
 		}
