@@ -14,3 +14,7 @@ This will show an image file on /dev/fb0:
 
 # sudo amd64/fbshow file
 
+This will visualize touchscreen events from /dev/input/event0 on /dev/fb0:
+
+# sudo amd64/fbtouch /dev/input/event0
+
