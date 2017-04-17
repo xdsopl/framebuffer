@@ -41,16 +41,19 @@ type Position struct {
 	X, Y int
 }
 
-func square(fb draw.Image, pos Position) {
-	for j := 0; j < 10; j++ {
-		for i := 0; i < 10; i++ {
-			fb.Set(pos.X+i, pos.Y+j, color.White)
-		}
+func square(fb draw.Image, pos Position, col color.Color) {
+	radius := 35
+	for i := -radius; i <= radius; i++ {
+		fb.Set(pos.X+i, pos.Y-radius, col)
+		fb.Set(pos.X+i, pos.Y+radius, col)
+		fb.Set(pos.X-radius, pos.Y+i, col)
+		fb.Set(pos.X+radius, pos.Y+i, col)
 	}
 }
 
 func painter(fb draw.Image, ev *os.File) {
 	pos := Position{-1, -1}
+	old := pos
 	const ieMax = 64
 	const ieSize = int(unsafe.Sizeof(InputEvent{}))
 	buf := make([]byte, ieMax * ieSize)
@@ -66,7 +69,9 @@ func painter(fb draw.Image, ev *os.File) {
 		for _, ie := range iev {
 			switch ie.Type {
 				case EventTypeSyn:
-					square(fb, pos)
+					square(fb, old, color.Black)
+					old = pos
+					square(fb, pos, color.White)
 				case EventTypeAbs:
 					switch ie.Code {
 						case EventCodeAbsX:
