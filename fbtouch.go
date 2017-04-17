@@ -32,9 +32,18 @@ type InputEvent struct {
 	Value int32
 }
 
+const EventTypeSyn = 0x00
 const EventTypeAbs = 0x03
 const EventCodeAbsX = 0x00
 const EventCodeAbsY = 0x01
+
+func square(fb draw.Image, x, y int) {
+	for j := 0; j < 10; j++ {
+		for i := 0; i < 10; i++ {
+			fb.Set(x+i, y+j, color.White)
+		}
+	}
+}
 
 func painter(fb draw.Image, ev *os.File) {
 	x := -1
@@ -52,17 +61,16 @@ func painter(fb draw.Image, ev *os.File) {
 		err = binary.Read(bytes.NewBuffer(buf[:n]), binary.LittleEndian, &iev)
 		if err != nil { die(err) }
 		for _, ie := range iev {
-			if ie.Type != EventTypeAbs { continue }
-			switch ie.Code {
-				case EventCodeAbsX:
-					x = int(ie.Value)
-				case EventCodeAbsY:
-					y = int(ie.Value)
-			}
-		}
-		for j := 0; j < 10; j++ {
-			for i := 0; i < 10; i++ {
-				fb.Set(x+i, y+j, color.White)
+			switch ie.Type {
+				case EventTypeSyn:
+					square(fb, x, y)
+				case EventTypeAbs:
+					switch ie.Code {
+						case EventCodeAbsX:
+							x = int(ie.Value)
+						case EventCodeAbsY:
+							y = int(ie.Value)
+					}
 			}
 		}
 	}
