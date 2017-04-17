@@ -33,9 +33,11 @@ type InputEvent struct {
 }
 
 const EventTypeSyn = 0x00
+const EventTypeKey = 0x01
 const EventTypeAbs = 0x03
 const EventCodeAbsX = 0x00
 const EventCodeAbsY = 0x01
+const EventCodeBtnTouch = 0x14a
 
 type Position struct {
 	X, Y int
@@ -53,6 +55,7 @@ func square(fb draw.Image, pos Position, col color.Color) {
 
 func painter(fb draw.Image, ev *os.File) {
 	pos := Position{-1, -1}
+	touching := false
 	old := pos
 	const ieMax = 64
 	const ieSize = int(unsafe.Sizeof(InputEvent{}))
@@ -71,7 +74,18 @@ func painter(fb draw.Image, ev *os.File) {
 				case EventTypeSyn:
 					square(fb, old, color.Black)
 					old = pos
-					square(fb, pos, color.White)
+					if touching {
+						square(fb, pos, color.White)
+					}
+				case EventTypeKey:
+					switch ie.Code {
+						case EventCodeBtnTouch:
+							if ie.Value == 0 {
+								touching = false
+							} else {
+								touching = true
+							}
+					}
 				case EventTypeAbs:
 					switch ie.Code {
 						case EventCodeAbsX:
