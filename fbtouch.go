@@ -32,6 +32,13 @@ type InputEvent struct {
 	Value int32
 }
 
+type InputAbsInfo struct {
+	Value, Minimum, Maximum, Fuzz, Flat, Resolution int32
+}
+
+const EVIOCGABS_ABS_X = 2149074240
+const EVIOCGABS_ABS_Y = 2149074241
+
 const EventTypeSyn = 0x00
 const EventTypeKey = 0x01
 const EventTypeAbs = 0x03
@@ -55,6 +62,13 @@ func square(fb draw.Image, pos Position, col color.Color) {
 
 func painter(fb draw.Image, ev *os.File) {
 	pos := Position{-1, -1}
+	var absX, absY InputAbsInfo
+	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, ev.Fd(), EVIOCGABS_ABS_X, uintptr(unsafe.Pointer(&absX))); errno != 0 {
+		die(&os.SyscallError{"SYS_IOCTL", errno})
+	}
+	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, ev.Fd(), EVIOCGABS_ABS_Y, uintptr(unsafe.Pointer(&absY))); errno != 0 {
+		die(&os.SyscallError{"SYS_IOCTL", errno})
+	}
 	touching := false
 	old := pos
 	const ieMax = 64
@@ -89,9 +103,9 @@ func painter(fb draw.Image, ev *os.File) {
 				case EventTypeAbs:
 					switch ie.Code {
 						case EventCodeAbsX:
-							pos.X = int(ie.Value)
+							pos.X = fb.Bounds().Min.X + ((fb.Bounds().Dx()-1) * int(ie.Value - absX.Minimum)) / int(absX.Maximum - absX.Minimum)
 						case EventCodeAbsY:
-							pos.Y = int(ie.Value)
+							pos.Y = fb.Bounds().Min.Y + ((fb.Bounds().Dy()-1) * int(ie.Value - absY.Minimum)) / int(absY.Maximum - absY.Minimum)
 					}
 			}
 		}
