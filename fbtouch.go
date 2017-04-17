@@ -103,9 +103,9 @@ func painter(fb draw.Image, ev *os.File) {
 				case EventTypeAbs:
 					switch ie.Code {
 						case EventCodeAbsX:
-							pos.X = fb.Bounds().Min.X + ((fb.Bounds().Dx()-1) * int(ie.Value - absX.Minimum)) / int(absX.Maximum - absX.Minimum)
+							pos.X = fb.Bounds().Min.X + (fb.Bounds().Dx() * int(ie.Value - absX.Minimum)) / int(absX.Maximum - absX.Minimum)
 						case EventCodeAbsY:
-							pos.Y = fb.Bounds().Min.Y + ((fb.Bounds().Dy()-1) * int(ie.Value - absY.Minimum)) / int(absY.Maximum - absY.Minimum)
+							pos.Y = fb.Bounds().Min.Y + (fb.Bounds().Dy() * int(ie.Value - absY.Minimum)) / int(absY.Maximum - absY.Minimum)
 					}
 			}
 		}
