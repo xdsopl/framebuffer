@@ -36,8 +36,18 @@ type InputAbsInfo struct {
 	Value, Minimum, Maximum, Fuzz, Flat, Resolution int32
 }
 
-const EVIOCGABS_ABS_X = 2149074240
-const EVIOCGABS_ABS_Y = 2149074241
+func EVIOCGABS(abs uintptr) uintptr {
+	return 2149074240 + abs
+}
+
+func GetAbsInfo(ev *os.File, abs uintptr) (InputAbsInfo, *os.SyscallError) {
+	var tmp InputAbsInfo
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, ev.Fd(), EVIOCGABS(abs), uintptr(unsafe.Pointer(&tmp)))
+	if errno != 0 {
+		return tmp, &os.SyscallError{"SYS_IOCTL", errno}
+	}
+	return tmp, nil
+}
 
 const EventTypeSyn = 0x00
 const EventTypeKey = 0x01
@@ -62,13 +72,10 @@ func square(fb draw.Image, pos Position, col color.Color) {
 
 func painter(fb draw.Image, ev *os.File) {
 	pos := Position{-1, -1}
-	var absX, absY InputAbsInfo
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, ev.Fd(), EVIOCGABS_ABS_X, uintptr(unsafe.Pointer(&absX))); errno != 0 {
-		die(&os.SyscallError{"SYS_IOCTL", errno})
-	}
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, ev.Fd(), EVIOCGABS_ABS_Y, uintptr(unsafe.Pointer(&absY))); errno != 0 {
-		die(&os.SyscallError{"SYS_IOCTL", errno})
-	}
+	absX, err := GetAbsInfo(ev, EventCodeAbsX)
+	if err != nil { die(err) }
+	absY, err := GetAbsInfo(ev, EventCodeAbsY)
+	if err != nil { die(err) }
 	touching := false
 	old := pos
 	const ieMax = 64
