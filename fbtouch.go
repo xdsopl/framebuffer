@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"flag"
 	"bytes"
+	"errors"
 	"unsafe"
 	"syscall"
 	"image"
@@ -60,6 +61,21 @@ type Position struct {
 	X, Y int
 }
 
+func GetEvents(ev *os.File) ([]InputEvent, error) {
+	const ieMax = 64
+	const ieSize = int(unsafe.Sizeof(InputEvent{}))
+	buf := make([]byte, ieMax * ieSize)
+	n, err := ev.Read(buf)
+	if err != nil { return nil, err }
+	if n == 0 { return nil, nil }
+	if n % ieSize != 0 { return nil, errors.New("partial read") }
+	ieNum := n / ieSize
+	iev := make([]InputEvent, ieNum)
+	err = binary.Read(bytes.NewBuffer(buf[:n]), binary.LittleEndian, &iev)
+	if err != nil { return nil, err }
+	return iev, nil
+}
+
 func square(fb draw.Image, pos Position, col color.Color) {
 	radius := 35
 	for i := -radius; i <= radius; i++ {
@@ -74,17 +90,8 @@ func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo) {
 	pos := Position{-1, -1}
 	touching := false
 	old := pos
-	const ieMax = 64
-	const ieSize = int(unsafe.Sizeof(InputEvent{}))
-	buf := make([]byte, ieMax * ieSize)
 	for {
-		n, err := ev.Read(buf)
-		if err != nil { die(err) }
-		if n == 0 { continue }
-		if n % ieSize != 0 { die("partial read") }
-		ieNum := n / ieSize
-		iev := make([]InputEvent, ieNum)
-		err = binary.Read(bytes.NewBuffer(buf[:n]), binary.LittleEndian, &iev)
+		iev, err := GetEvents(ev)
 		if err != nil { die(err) }
 		for _, ie := range iev {
 			switch ie.Type {
