@@ -55,6 +55,10 @@ const EventTypeKey = 0x01
 const EventTypeAbs = 0x03
 const EventCodeAbsX = 0x00
 const EventCodeAbsY = 0x01
+const EventCodeAbsMtSlot = 0x2f
+const EventCodeAbsMtPositionX = 0x35
+const EventCodeAbsMtPositionY = 0x36
+const EventCodeAbsMtTrackingId = 0x39
 const EventCodeBtnTouch = 0x14a
 
 type Position struct {
@@ -122,6 +126,47 @@ func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo) {
 	}
 }
 
+func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo) {
+	pos := make([]Position, absN.Maximum + 1)
+	old := make([]Position, absN.Maximum + 1)
+	copy(old, pos)
+	touching := make([]bool, absN.Maximum + 1)
+	n := int(absN.Value)
+	for {
+		iev, err := GetEvents(ev)
+		if err != nil { die(err) }
+		for _, ie := range iev {
+			switch ie.Type {
+				case EventTypeSyn:
+					for i := absN.Minimum; i <= absN.Maximum; i++ {
+						square(fb, old[i], color.Black)
+						if touching[i] {
+							square(fb, pos[i], color.White)
+						}
+					}
+					copy(old, pos)
+				case EventTypeAbs:
+					switch ie.Code {
+						case EventCodeAbsMtSlot:
+							if absN.Minimum <= ie.Value && ie.Value <= absN.Maximum {
+								n = int(ie.Value)
+							}
+						case EventCodeAbsMtTrackingId:
+							if ie.Value == -1 {
+								touching[n] = false
+							} else {
+								touching[n] = true
+							}
+						case EventCodeAbsMtPositionX:
+							pos[n].X = fb.Bounds().Min.X + (fb.Bounds().Dx() * int(ie.Value - absX.Minimum)) / int(absX.Maximum - absX.Minimum)
+						case EventCodeAbsMtPositionY:
+							pos[n].Y = fb.Bounds().Min.Y + (fb.Bounds().Dy() * int(ie.Value - absY.Minimum)) / int(absY.Maximum - absY.Minimum)
+					}
+			}
+		}
+	}
+}
+
 func main() {
 	flag.Parse()
 	if len(flag.Args()) != 1 { die("usage: fbtouch /dev/input/eventN") }
@@ -135,6 +180,11 @@ func main() {
 	fb, err := framebuffer.Open("/dev/fb0")
 	if err != nil { die(err) }
 	draw.Draw(fb, fb.Bounds(), &image.Uniform{color.Black}, image.ZP, draw.Src)
-	singleTouch(fb, ev, absX, absY)
+	absN, err := GetAbsInfo(ev, EventCodeAbsMtSlot)
+	if err != nil {
+		singleTouch(fb, ev, absX, absY)
+	} else {
+		multiTouch(fb, ev, absX, absY, absN)
+	}
 }
 
