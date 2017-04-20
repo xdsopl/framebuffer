@@ -70,12 +70,8 @@ func square(fb draw.Image, pos Position, col color.Color) {
 	}
 }
 
-func painter(fb draw.Image, ev *os.File) {
+func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo) {
 	pos := Position{-1, -1}
-	absX, err := GetAbsInfo(ev, EventCodeAbsX)
-	if err != nil { die(err) }
-	absY, err := GetAbsInfo(ev, EventCodeAbsY)
-	if err != nil { die(err) }
 	touching := false
 	old := pos
 	const ieMax = 64
@@ -125,9 +121,13 @@ func main() {
 	name := flag.Args()[0]
 	ev, err := os.Open(name)
 	if err != nil { die(err) }
+	absX, err := GetAbsInfo(ev, EventCodeAbsX)
+	if err != nil { die(err) }
+	absY, err := GetAbsInfo(ev, EventCodeAbsY)
+	if err != nil { die(err) }
 	fb, err := framebuffer.Open("/dev/fb0")
 	if err != nil { die(err) }
 	draw.Draw(fb, fb.Bounds(), &image.Uniform{color.Black}, image.ZP, draw.Src)
-	painter(fb, ev)
+	singleTouch(fb, ev, absX, absY)
 }
 
