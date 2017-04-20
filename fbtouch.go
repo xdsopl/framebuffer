@@ -40,7 +40,7 @@ func EVIOCGABS(abs uintptr) uintptr {
 	return 2149074240 + abs
 }
 
-func GetAbsInfo(ev *os.File, abs uintptr) (InputAbsInfo, *os.SyscallError) {
+func GetAbsInfo(ev *os.File, abs uintptr) (InputAbsInfo, error) {
 	var tmp InputAbsInfo
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, ev.Fd(), EVIOCGABS(abs), uintptr(unsafe.Pointer(&tmp)))
 	if errno != 0 {
