@@ -90,7 +90,7 @@ func square(fb draw.Image, pos Position, col color.Color) {
 	}
 }
 
-func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo) {
+func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo, ghost bool) {
 	pos := Position{-1, -1}
 	touching := false
 	old := pos
@@ -100,7 +100,9 @@ func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo) {
 		for _, ie := range iev {
 			switch ie.Type {
 				case EventTypeSyn:
-					square(fb, old, color.Black)
+					if !ghost {
+						square(fb, old, color.Black)
+					}
 					old = pos
 					if touching {
 						square(fb, pos, color.White)
@@ -126,7 +128,7 @@ func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo) {
 	}
 }
 
-func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo) {
+func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo, ghost bool) {
 	pos := make([]Position, absN.Maximum + 1)
 	old := make([]Position, absN.Maximum + 1)
 	copy(old, pos)
@@ -139,7 +141,9 @@ func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo) {
 			switch ie.Type {
 				case EventTypeSyn:
 					for i := absN.Minimum; i <= absN.Maximum; i++ {
-						square(fb, old[i], color.Black)
+						if !ghost {
+							square(fb, old[i], color.Black)
+						}
 						if touching[i] {
 							square(fb, pos[i], color.White)
 						}
@@ -169,8 +173,13 @@ func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo) {
 
 func main() {
 	flag.Parse()
-	if len(flag.Args()) != 1 { die("usage: fbtouch /dev/input/eventN") }
+	if len(flag.Args()) < 1 || len(flag.Args()) > 2 { die("usage: fbtouch /dev/input/eventN [ghost]") }
 	name := flag.Args()[0]
+	var ghost bool
+	if len(flag.Args()) == 2 {
+		mode := flag.Args()[1]
+		if mode == "ghost" { ghost = true }
+	}
 	ev, err := os.Open(name)
 	if err != nil { die(err) }
 	absX, err := GetAbsInfo(ev, EventCodeAbsX)
@@ -182,9 +191,9 @@ func main() {
 	draw.Draw(fb, fb.Bounds(), &image.Uniform{color.Black}, image.ZP, draw.Src)
 	absN, err := GetAbsInfo(ev, EventCodeAbsMtSlot)
 	if err != nil {
-		singleTouch(fb, ev, absX, absY)
+		singleTouch(fb, ev, absX, absY, ghost)
 	} else {
-		multiTouch(fb, ev, absX, absY, absN)
+		multiTouch(fb, ev, absX, absY, absN, ghost)
 	}
 }
 
