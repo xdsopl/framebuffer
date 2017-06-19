@@ -80,8 +80,7 @@ func GetEvents(ev *os.File) ([]InputEvent, error) {
 	return iev, nil
 }
 
-func square(fb draw.Image, pos Position, col color.Color) {
-	radius := 35
+func square(fb draw.Image, pos Position, col color.Color, radius int) {
 	for i := -radius; i <= radius; i++ {
 		fb.Set(pos.X+i, pos.Y-radius, col)
 		fb.Set(pos.X+i, pos.Y+radius, col)
@@ -90,7 +89,7 @@ func square(fb draw.Image, pos Position, col color.Color) {
 	}
 }
 
-func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo, ghost bool) {
+func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo, ghost bool, radius int) {
 	pos := Position{-1, -1}
 	touching := false
 	old := pos
@@ -101,11 +100,11 @@ func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo, ghost bool
 			switch ie.Type {
 				case EventTypeSyn:
 					if !ghost {
-						square(fb, old, color.Black)
+						square(fb, old, color.Black, radius)
 					}
 					old = pos
 					if touching {
-						square(fb, pos, color.White)
+						square(fb, pos, color.White, radius)
 					}
 				case EventTypeKey:
 					switch ie.Code {
@@ -128,7 +127,7 @@ func singleTouch(fb draw.Image, ev *os.File, absX, absY InputAbsInfo, ghost bool
 	}
 }
 
-func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo, ghost bool) {
+func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo, ghost bool, radius int) {
 	pos := make([]Position, absN.Maximum + 1)
 	old := make([]Position, absN.Maximum + 1)
 	copy(old, pos)
@@ -142,10 +141,10 @@ func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo, ghost
 				case EventTypeSyn:
 					for i := absN.Minimum; i <= absN.Maximum; i++ {
 						if !ghost {
-							square(fb, old[i], color.Black)
+							square(fb, old[i], color.Black, radius)
 						}
 						if touching[i] {
-							square(fb, pos[i], color.White)
+							square(fb, pos[i], color.White, radius)
 						}
 					}
 					copy(old, pos)
@@ -173,12 +172,14 @@ func multiTouch(fb draw.Image, ev *os.File, absX, absY, absN InputAbsInfo, ghost
 
 func main() {
 	flag.Parse()
-	if len(flag.Args()) < 1 || len(flag.Args()) > 2 { die("usage: fbtouch /dev/input/eventN [ghost]") }
+	if len(flag.Args()) < 1 || len(flag.Args()) > 3 { die("usage: fbtouch /dev/input/eventN [ghost|dots]") }
 	name := flag.Args()[0]
 	var ghost bool
+	radius := 35
 	if len(flag.Args()) == 2 {
 		mode := flag.Args()[1]
-		if mode == "ghost" { ghost = true }
+		if mode == "ghost" || mode == "dots" { ghost = true }
+		if mode == "dots" { radius = 1 }
 	}
 	ev, err := os.Open(name)
 	if err != nil { die(err) }
@@ -191,9 +192,9 @@ func main() {
 	draw.Draw(fb, fb.Bounds(), &image.Uniform{color.Black}, image.ZP, draw.Src)
 	absN, err := GetAbsInfo(ev, EventCodeAbsMtSlot)
 	if err != nil {
-		singleTouch(fb, ev, absX, absY, ghost)
+		singleTouch(fb, ev, absX, absY, ghost, radius)
 	} else {
-		multiTouch(fb, ev, absX, absY, absN, ghost)
+		multiTouch(fb, ev, absX, absY, absN, ghost, radius)
 	}
 }
 
