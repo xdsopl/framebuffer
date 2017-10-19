@@ -50,6 +50,16 @@ func GetAbsInfo(ev *os.File, abs uintptr) (InputAbsInfo, error) {
 	return tmp, nil
 }
 
+const EVIOCGRAB = 1074021776
+
+func GrabDevice(ev *os.File) error {
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, ev.Fd(), EVIOCGRAB, 1)
+	if errno != 0 {
+		return &os.SyscallError{"SYS_IOCTL", errno}
+	}
+	return nil
+}
+
 const EventTypeSyn = 0x00
 const EventTypeKey = 0x01
 const EventTypeAbs = 0x03
@@ -182,6 +192,8 @@ func main() {
 		if mode == "dots" { radius = 1 }
 	}
 	ev, err := os.Open(name)
+	if err != nil { die(err) }
+	err = GrabDevice(ev)
 	if err != nil { die(err) }
 	absX, err := GetAbsInfo(ev, EventCodeAbsX)
 	if err != nil { die(err) }
